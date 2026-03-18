@@ -5,7 +5,11 @@ interface Props {
 }
 
 export default function Navbar({ scrollY }: Props) {
-  const scrolled = scrollY > 80;
+  // Only go dark once the user has scrolled PAST the full canvas section (500vh)
+  // 500vh - 100vh = 400vh of scroll before the sticky zone releases
+  const pastCanvas =
+    typeof window !== 'undefined' && scrollY > window.innerHeight * 4.2;
+  const scrolled = pastCanvas;
 
   return (
     <nav
