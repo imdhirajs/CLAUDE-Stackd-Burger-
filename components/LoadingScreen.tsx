@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 interface Props {
   totalFrames: number;
@@ -8,30 +8,38 @@ interface Props {
 }
 
 export default function LoadingScreen({ totalFrames, onLoaded }: Props) {
-  const [loaded, setLoaded] = useState(0);
+  const [loadedCount, setLoadedCount] = useState(0);
   const [fading, setFading] = useState(false);
   const [visible, setVisible] = useState(true);
+  const startedRef = useRef(false);
 
   const startLoad = useCallback(() => {
-    const images: HTMLImageElement[] = [];
-    let loadedCount = 0;
+    // Guard against double-invoke (React StrictMode double-effect)
+    if (startedRef.current) return;
+    startedRef.current = true;
 
-    for (let i = 1; i <= totalFrames; i++) {
+    const images: HTMLImageElement[] = new Array(totalFrames);
+    let count = 0;
+
+    const onSettle = () => () => {
+      count++;
+      setLoadedCount(count);
+      if (count === totalFrames) {
+        setFading(true);
+        setTimeout(() => {
+          setVisible(false);
+          onLoaded(images);
+        }, 600);
+      }
+    };
+
+    for (let i = 0; i < totalFrames; i++) {
       const img = new Image();
-      const num = String(i).padStart(4, '0');
-      img.src = `/frames/frame_${num}.webp`;
-      img.onload = img.onerror = () => {
-        loadedCount++;
-        setLoaded(loadedCount);
-        if (loadedCount === totalFrames) {
-          setFading(true);
-          setTimeout(() => {
-            setVisible(false);
-            onLoaded(images);
-          }, 600);
-        }
-      };
-      images[i - 1] = img;
+      // IMPORTANT: set onload / onerror BEFORE setting src
+      img.onload = onSettle();
+      img.onerror = onSettle();
+      img.src = `/frames/frame_${String(i + 1).padStart(4, '0')}.webp`;
+      images[i] = img;
     }
   }, [totalFrames, onLoaded]);
 
@@ -41,14 +49,14 @@ export default function LoadingScreen({ totalFrames, onLoaded }: Props) {
 
   if (!visible) return null;
 
-  const pct = Math.round((loaded / totalFrames) * 100);
+  const pct = Math.round((loadedCount / totalFrames) * 100);
 
   return (
     <div
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'var(--bg-deep)',
+        background: '#080400',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -59,33 +67,25 @@ export default function LoadingScreen({ totalFrames, onLoaded }: Props) {
         transition: 'opacity 0.6s ease',
       }}
     >
-      {/* Brand */}
       <span
         className="font-bebas"
-        style={{
-          fontSize: 18,
-          letterSpacing: 8,
-          color: 'var(--toasted)',
-          userSelect: 'none',
-        }}
+        style={{ fontSize: 18, letterSpacing: 8, color: '#D4840A', userSelect: 'none' }}
       >
         STACK&apos;D
       </span>
 
-      {/* Loading label */}
       <span
         style={{
           fontFamily: 'var(--font-inter), Inter, sans-serif',
           fontSize: 10,
           letterSpacing: 3,
-          color: 'var(--cream-muted)',
+          color: '#C8A870',
           textTransform: 'uppercase',
         }}
       >
         Loading the good stuff...
       </span>
 
-      {/* Progress bar */}
       <div
         style={{
           width: 240,
@@ -98,22 +98,20 @@ export default function LoadingScreen({ totalFrames, onLoaded }: Props) {
         <div
           style={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            height: '100%',
+            inset: '0 auto 0 0',
             width: `${pct}%`,
             background: 'linear-gradient(90deg, #D4840A, #F0A830)',
-            transition: 'width 0.1s ease',
+            transition: 'width 0.12s ease',
           }}
         />
       </div>
 
-      {/* Percentage */}
       <span
         style={{
           fontFamily: 'var(--font-inter), Inter, sans-serif',
           fontSize: 11,
-          color: 'var(--cream-muted)',
+          color: '#C8A870',
+          fontVariantNumeric: 'tabular-nums',
         }}
       >
         {pct}%
