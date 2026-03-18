@@ -40,5 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# generated frames (run node extract-frames.mjs to regenerate)
-/public/frames/
+# Burger.mp4 source video (large binary — frames committed instead)
+Burger.mp4
